@@ -20,7 +20,7 @@ echo "────────────────────────�
 echo "  1) Qwen 3B       (local, rápido)"
 echo "  2) Qwen 7B       (local, melhor)"
 echo "  3) $ICON_CLOUD Llama 3.3 70B  (Groq, online)"
-echo "  4) $ICON_CLOUD Gemma 2 9B     (Groq, online)"
+echo "  4) $ICON_CLOUD Llama 3.1 8B   (Groq, online)"
 echo "─────────────────────────────"
 read -p "  Modelo: " op
 
@@ -28,7 +28,7 @@ case $op in
   1) MODEL=~/qwen3b.gguf                  ; MODO="local" ; MODELO_NOME="Qwen 3B (local)" ;;
   2) MODEL=~/qwen7b.gguf                  ; MODO="local" ; MODELO_NOME="Qwen 7B (local)" ;;
   3) GROQ_MODEL="llama-3.3-70b-versatile" ; MODO="groq"  ; MODELO_NOME="Llama 3.3 70B (Groq)" ;;
-  4) GROQ_MODEL="gemma2-9b-it"            ; MODO="groq"  ; MODELO_NOME="Gemma 2 9B (Groq)" ;;
+  4) GROQ_MODEL="llama-3.1-8b-instant"    ; MODO="groq"  ; MODELO_NOME="Llama 3.1 8B (Groq)" ;;
   *) echo "$ICON_WARN Opção inválida"; exit 1 ;;
 esac
 
@@ -56,6 +56,23 @@ exec 5<$FIFO_WHISPER_OUT
 # Descarta mensagem inicial "Whisper pronto!"
 read -r _ <&5
 
+# --- Inicia servidor Groq (se modo groq) ---
+if [[ "$MODO" == "groq" ]]; then
+    FIFO_GROQ_IN=/tmp/groq_in
+    FIFO_GROQ_OUT=/tmp/groq_out
+    rm -f $FIFO_GROQ_IN $FIFO_GROQ_OUT
+    mkfifo $FIFO_GROQ_IN $FIFO_GROQ_OUT
+    cd ~/Documentos/kokoro-tts && GROQ_API_KEY="$GROQ_API_KEY" uv run python3 ~/Documentos/kokoro-tts/groq_chat.py < $FIFO_GROQ_IN > $FIFO_GROQ_OUT 2>/dev/null &
+    GROQ_PID=$!
+    exec 6>$FIFO_GROQ_IN
+    exec 7<$FIFO_GROQ_OUT
+    # Descarta "Groq pronto!"
+    read -r _ <&7
+fi
+
+# Limpa histórico anterior
+echo '[]' > /tmp/ia-voz-historico.json
+
 # Função: limpa texto pra fala (remove markdown/unicode)
 limpar_para_voz() {
     echo "$1" \
@@ -78,28 +95,6 @@ echo "  $ICON_MIC  Enter em branco  →  gravar voz"
 echo "  $ICON_MSG  Digite texto     →  enviar por texto"
 echo "  $ICON_OFF  sair             →  encerrar"
 echo "────────────────────────────────────────────"
-
-groq_resposta() {
-    local pergunta="$1"
-    cd ~/Documentos/kokoro-tts && uv run python3 - << PYEOF
-from openai import OpenAI
-
-client = OpenAI(
-    api_key="$GROQ_API_KEY",
-    base_url="https://api.groq.com/openai/v1"
-)
-
-response = client.chat.completions.create(
-    model="$GROQ_MODEL",
-    messages=[
-        {"role": "system", "content": "Você é um assistente útil. Responda em português brasileiro de forma direta e curta."},
-        {"role": "user", "content": """$pergunta"""}
-    ],
-    max_tokens=500
-)
-print(response.choices[0].message.content.strip(), end="")
-PYEOF
-}
 
 while true; do
   read -p $'\n\uf054 ' INPUT
@@ -124,15 +119,47 @@ while true; do
   echo "$ICON_SPIN  Pensando..."
 
   if [[ "$MODO" == "groq" ]]; then
-    RESPOSTA=$(groq_resposta "$PERGUNTA")
+    # Envia modelo + pergunta separados por unit separator (\x1f)
+    printf '%s\x1f%s\n' "$GROQ_MODEL" "$PERGUNTA" >&6
+    read -r RESPOSTA <&7
   else
-    RESPOSTA=$(echo "" | ~/llama.cpp/build/bin/llama-completion \
+    # Monta prompt com histórico local
+    HISTORICO_PROMPT=$(python3 -c "
+import json
+try:
+    with open('/tmp/ia-voz-historico.json') as f:
+        h = json.load(f)
+except:
+    h = []
+prompt = ''
+for m in h:
+    role = 'Usuário' if m['role']=='user' else 'Assistente'
+    prompt += f\"{role}: {m['content']}\n\"
+print(prompt, end='')
+")
+    PROMPT_FINAL="${HISTORICO_PROMPT}Usuário: ${PERGUNTA}\nAssistente:"
+
+    RESPOSTA=$(printf '%s' "$PROMPT_FINAL" | ~/llama.cpp/build/bin/llama-completion \
       -m $MODEL \
       -sys "Você é um assistente útil. Responda em português brasileiro de forma direta e curta." \
-      -p "$PERGUNTA" \
+      -f /dev/stdin \
       -n 500 \
       --no-display-prompt \
-      --no-perf 2>/dev/null | sed 's/> //g' | sed '/^$/d' | sed 's/EOF by user.*$//')
+      --no-perf 2>/dev/null | sed 's/> //g' | sed '/^$/d' | sed 's/EOF by user.*$//' | sed 's/Usuário:.*$//' | tr '\n' ' ')
+
+    # Salva no histórico local
+    python3 -c "
+import json
+try:
+    with open('/tmp/ia-voz-historico.json') as f:
+        h = json.load(f)
+except:
+    h = []
+h.append({'role':'user','content':$(printf '%q' "$PERGUNTA")})
+h.append({'role':'assistant','content':$(printf '%q' "$RESPOSTA")})
+with open('/tmp/ia-voz-historico.json','w') as f:
+    json.dump(h,f)
+"
   fi
 
   # Exibe formatado no terminal
@@ -148,5 +175,8 @@ done
 echo ""
 echo "$ICON_OFF  Encerrando..."
 kill $KOKORO_PID $WHISPER_PID 2>/dev/null
+[[ "$MODO" == "groq" ]] && kill $GROQ_PID 2>/dev/null
 exec 3>&- 4>&- 5>&-
-rm -f $FIFO_KOKORO $FIFO_WHISPER $FIFO_WHISPER_OUT
+[[ "$MODO" == "groq" ]] && exec 6>&- 7>&-
+rm -f $FIFO_KOKORO $FIFO_WHISPER $FIFO_WHISPER_OUT /tmp/ia-voz-historico.json
+[[ "$MODO" == "groq" ]] && rm -f $FIFO_GROQ_IN $FIFO_GROQ_OUT
