@@ -148,18 +148,19 @@ print(prompt, end='')
       --no-perf 2>/dev/null | sed 's/> //g' | sed '/^$/d' | sed 's/EOF by user.*$//' | sed 's/Usuário:.*$//' | tr '\n' ' ')
 
     # Salva no histórico local
-    python3 -c "
-import json
+    python3 - "$PERGUNTA" "$RESPOSTA" << 'PYEOF'
+import json, sys
+pergunta, resposta = sys.argv[1], sys.argv[2]
 try:
     with open('/tmp/ia-voz-historico.json') as f:
         h = json.load(f)
 except:
     h = []
-h.append({'role':'user','content':$(printf '%q' "$PERGUNTA")})
-h.append({'role':'assistant','content':$(printf '%q' "$RESPOSTA")})
+h.append({'role':'user','content':pergunta})
+h.append({'role':'assistant','content':resposta})
 with open('/tmp/ia-voz-historico.json','w') as f:
     json.dump(h,f)
-"
+PYEOF
   fi
 
   # Exibe formatado no terminal
