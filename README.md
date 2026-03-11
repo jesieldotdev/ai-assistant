@@ -1,4 +1,4 @@
-# 🤖 IA-Voz
+# IA-Voz
 
 Assistente de IA local com voz, rodando 100% offline no Linux.
 
