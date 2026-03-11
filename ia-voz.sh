@@ -9,23 +9,31 @@ ICON_WARN=$'\uf071'     #
 ICON_OFF=$'\uf011'      # 
 ICON_MSG=$'\uf27b'      # 
 ICON_PLAY=$'\uf054'     # 
+ICON_CLOUD=$'\uf0c2'    # 
+
+# --- Carrega variáveis de ambiente (API keys) ---
+source ~/.config/ia-voz.env
 
 clear
 echo "$ICON_BOT  IA-Voz"
-echo "─────────────────────────"
-echo "  1) Qwen 3B  (rápido)"
-echo "  2) Qwen 7B  (melhor)"
-echo "─────────────────────────"
+echo "─────────────────────────────"
+echo "  1) Qwen 3B       (local, rápido)"
+echo "  2) Qwen 7B       (local, melhor)"
+echo "  3) $ICON_CLOUD Llama 3.3 70B  (Groq, online)"
+echo "  4) $ICON_CLOUD Gemma 2 9B     (Groq, online)"
+echo "─────────────────────────────"
 read -p "  Modelo: " op
 
 case $op in
-  1) MODEL=~/qwen3b.gguf ;;
-  2) MODEL=~/qwen7b.gguf ;;
+  1) MODEL=~/qwen3b.gguf                  ; MODO="local" ; MODELO_NOME="Qwen 3B (local)" ;;
+  2) MODEL=~/qwen7b.gguf                  ; MODO="local" ; MODELO_NOME="Qwen 7B (local)" ;;
+  3) GROQ_MODEL="llama-3.3-70b-versatile" ; MODO="groq"  ; MODELO_NOME="Llama 3.3 70B (Groq)" ;;
+  4) GROQ_MODEL="gemma2-9b-it"            ; MODO="groq"  ; MODELO_NOME="Gemma 2 9B (Groq)" ;;
   *) echo "$ICON_WARN Opção inválida"; exit 1 ;;
 esac
 
 echo ""
-echo "$ICON_SPIN  Carregando modelos..."
+echo "$ICON_SPIN  Carregando..."
 
 # --- Inicia Kokoro (TTS) ---
 FIFO_KOKORO=/tmp/kokoro_in
@@ -48,14 +56,50 @@ exec 5<$FIFO_WHISPER_OUT
 # Descarta mensagem inicial "Whisper pronto!"
 read -r _ <&5
 
+# Função: limpa texto pra fala (remove markdown/unicode)
+limpar_para_voz() {
+    echo "$1" \
+        | sed 's/\*\*//g' \
+        | sed 's/\*//g' \
+        | sed 's/^#{1,6} //g' \
+        | sed 's/`//g' \
+        | sed 's/^[0-9]\+\. //g' \
+        | sed 's/^- //g' \
+        | sed 's/^  - //g' \
+        | tr '\n' ' ' \
+        | sed 's/  */ /g'
+}
+
 sleep 3
 clear
-echo "$ICON_BOT  IA-Voz"
+echo "$ICON_BOT  IA-Voz  │  $MODELO_NOME"
 echo "────────────────────────────────────────────"
 echo "  $ICON_MIC  Enter em branco  →  gravar voz"
 echo "  $ICON_MSG  Digite texto     →  enviar por texto"
 echo "  $ICON_OFF  sair             →  encerrar"
 echo "────────────────────────────────────────────"
+
+groq_resposta() {
+    local pergunta="$1"
+    cd ~/Documentos/kokoro-tts && uv run python3 - << PYEOF
+from openai import OpenAI
+
+client = OpenAI(
+    api_key="$GROQ_API_KEY",
+    base_url="https://api.groq.com/openai/v1"
+)
+
+response = client.chat.completions.create(
+    model="$GROQ_MODEL",
+    messages=[
+        {"role": "system", "content": "Você é um assistente útil. Responda em português brasileiro de forma direta e curta."},
+        {"role": "user", "content": """$pergunta"""}
+    ],
+    max_tokens=500
+)
+print(response.choices[0].message.content.strip(), end="")
+PYEOF
+}
 
 while true; do
   read -p $'\n\uf054 ' INPUT
@@ -77,16 +121,28 @@ while true; do
     PERGUNTA="$INPUT"
   fi
 
-  RESPOSTA=$(echo "" | ~/llama.cpp/build/bin/llama-completion \
-    -m $MODEL \
-    -sys "Você é um assistente útil. Responda em português brasileiro de forma direta e curta." \
-    -p "$PERGUNTA" \
-    -n 200 \
-    --no-display-prompt \
-    --no-perf 2>/dev/null | sed 's/> //g' | sed '/^$/d' | sed 's/EOF by user.*$//' | tr '\n' ' ')
+  echo "$ICON_SPIN  Pensando..."
 
-  echo "$ICON_BOT  $RESPOSTA"
-  echo "$RESPOSTA" >&3
+  if [[ "$MODO" == "groq" ]]; then
+    RESPOSTA=$(groq_resposta "$PERGUNTA")
+  else
+    RESPOSTA=$(echo "" | ~/llama.cpp/build/bin/llama-completion \
+      -m $MODEL \
+      -sys "Você é um assistente útil. Responda em português brasileiro de forma direta e curta." \
+      -p "$PERGUNTA" \
+      -n 500 \
+      --no-display-prompt \
+      --no-perf 2>/dev/null | sed 's/> //g' | sed '/^$/d' | sed 's/EOF by user.*$//')
+  fi
+
+  # Exibe formatado no terminal
+  echo ""
+  echo -e "\033[33m$ICON_BOT  $RESPOSTA\033[0m" | sed 's/^/  /'
+  echo ""
+
+  # Envia limpo pro Kokoro falar
+  VOZ=$(limpar_para_voz "$RESPOSTA")
+  echo "$VOZ" >&3
 done
 
 echo ""
