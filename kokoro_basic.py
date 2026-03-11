@@ -10,7 +10,7 @@ text = '''
     Vocês estão prontos para a aventura? O mundo de Kokoro é vasto e cheio de mistérios esperando para serem descobertos. Preparem-se para explorar terras desconhecidas, enfrentar desafios emocionantes e fazer amizades inesquecíveis. A jornada começa agora, e cada passo que vocês derem os levará mais perto de se tornarem verdadeiros heróis de Kokoro. Vamos juntos nessa incrível aventura!
 '''
 
-generator = pipeline(text, voice='pm_santa')
+generator = pipeline(text, voice='pm_alex')
 
 audio_chunks = []
 
