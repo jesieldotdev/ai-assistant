@@ -1,4 +1,4 @@
-# IA-Voz
+# 🤖 IA-Voz
 
 Assistente de IA local com voz, rodando 100% offline no Linux.
 
@@ -31,18 +31,30 @@ cd llama.cpp
 cmake -B build && cmake --build build --config Release
 ```
 
-### Kokoro TTS + Whisper STT
-```bash
-git clone https://github.com/seu-usuario/ia-voz
-cd ia-voz/kokoro-tts
+### Python (kokoro-tts/)
 
+Requer Python 3.11. As dependências são gerenciadas pelo `uv`:
+
+```bash
 # Instala uv (se não tiver)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# Cria ambiente com Python 3.11 e instala dependências
+git clone https://github.com/seu-usuario/ia-voz
+cd ia-voz/kokoro-tts
 uv python pin 3.11
 uv sync
 ```
+
+Pacotes instalados automaticamente via `pyproject.toml`:
+
+| Pacote | Versão | Uso |
+|--------|--------|-----|
+| `kokoro` | ≥0.9.4 | TTS (texto → voz) |
+| `faster-whisper` | — | STT (voz → texto) |
+| `pyaudio` | ≥0.2.11 | reprodução de áudio |
+| `soundfile` | ≥0.13.1 | leitura/escrita de áudio |
+| `numpy` | ≥2.4.3 | processamento de arrays |
+| `openai` | ≥2.26.0 | cliente OpenAI (opcional) |
 
 ---
 
@@ -50,10 +62,11 @@ uv sync
 
 ```
 ia-voz/
-├── ia-voz.sh           # script principal
+├── ia-voz.sh            # script principal
+├── image.png            # screenshot
 └── kokoro-tts/
-    ├── kokoro_server.py # servidor TTS (texto → voz)
-    ├── whisper_server.py# servidor STT (voz → texto)
+    ├── kokoro_server.py  # servidor TTS (texto → voz)
+    ├── whisper_server.py # servidor STT (voz → texto)
     └── pyproject.toml
 ```
 
