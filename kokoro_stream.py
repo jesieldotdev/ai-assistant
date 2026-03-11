@@ -17,7 +17,12 @@ def stream_kokoro_local():
     
     print("Iniciando streaming do Kokoro local...")
     
-    texto = "Olá! Tudo bom, Jesiel? Este é um teste de streaming do Kokoro local. Espero que esteja funcionando bem!"
+    input_text = input("Digite o texto para sintetizar: ")
+    
+    texto = input_text.strip()
+    if not texto:
+        print("Texto vazio. Encerrando.")
+        return
     generator = pipeline(texto, voice='pm_santa')
     
     audio_chunks = []
