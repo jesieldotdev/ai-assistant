@@ -1,5 +1,5 @@
 [project]
-name = "kokoro-tts"
+name = "ai-assistant-llama-whisper-kokoro"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -10,6 +10,4 @@ dependencies = [
     "openai>=2.26.0",
     "soundfile>=0.13.1",
     "pyaudio>=0.2.11",
-    "faster-whisper>=1.2.1",
-    "sounddevice>=0.5.5",
 ]
