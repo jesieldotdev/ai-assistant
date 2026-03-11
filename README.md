@@ -2,6 +2,8 @@
 
 Assistente de IA local com voz, rodando 100% offline no Linux.
 
+![IA-Voz em uso](image.png)
+
 Fala com a IA pelo microfone ou pelo teclado — ela responde em texto e em voz alta.
 
 ```
