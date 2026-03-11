@@ -4,12 +4,13 @@ import soundfile as sf
 import numpy as np
 import sys
 
-MODEL_SIZE = "small"
+MODEL_SIZE = "small"  # tiny, base, small, medium, large
 LANGUAGE = "pt"
 SAMPLE_RATE = 16000
 AUDIO_FILE = "/tmp/gravacao.wav"
+DEVICE = "cpu"  # ou "cuda" se tiver GPU
 
-model = WhisperModel(MODEL_SIZE, device="cpu", compute_type="int8")
+model = WhisperModel(MODEL_SIZE, device=DEVICE, compute_type="int8")
 
 print("Whisper pronto!", flush=True)
 
