@@ -22,4 +22,4 @@ for line in sys.stdin:
         audio = np.concatenate(chunks)
         stream.write(audio.tobytes())
     
-    print("ok", flush=True)
+    # print("ok", flush=True)
