@@ -16,6 +16,31 @@ wheels = [
 ]
 
 [[package]]
+name = "ai-assistant-llama-whisper-kokoro"
+version = "0.1.0"
+source = { virtual = "." }
+dependencies = [
+    { name = "faster-whisper" },
+    { name = "kokoro" },
+    { name = "numpy" },
+    { name = "openai" },
+    { name = "pyaudio" },
+    { name = "sounddevice" },
+    { name = "soundfile" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "faster-whisper", specifier = ">=1.2.1" },
+    { name = "kokoro", specifier = ">=0.9.4" },
+    { name = "numpy", specifier = ">=2.4.3" },
+    { name = "openai", specifier = ">=2.26.0" },
+    { name = "pyaudio", specifier = ">=0.2.11" },
+    { name = "sounddevice", specifier = ">=0.5.5" },
+    { name = "soundfile", specifier = ">=0.13.1" },
+]
+
+[[package]]
 name = "annotated-doc"
 version = "0.0.4"
 source = { registry = "https://pypi.org/simple" }
@@ -743,31 +768,6 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/e8/48/88b8cdf28b068d070195c2817175549dee48e7682e3ab8994bee5f69217e/kokoro-0.9.4.tar.gz", hash = "sha256:fbf633262797f8cf46fdac3315cf9cade67dc8b762c0feccf334892772fb9ac4", size = 26215928, upload-time = "2025-04-05T22:01:35.294Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ea/cc/75f41633c75224ba820a4533163bc8b070b6bf25416014074c63284c2d4e/kokoro-0.9.4-py3-none-any.whl", hash = "sha256:a129dc6364a286bd6a92c396e9862459d3d3e45f2c15596ed5a94dcee5789efd", size = 32592, upload-time = "2025-04-05T22:01:23.018Z" },
-]
-
-[[package]]
-name = "kokoro-tts"
-version = "0.1.0"
-source = { virtual = "." }
-dependencies = [
-    { name = "faster-whisper" },
-    { name = "kokoro" },
-    { name = "numpy" },
-    { name = "openai" },
-    { name = "pyaudio" },
-    { name = "sounddevice" },
-    { name = "soundfile" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "faster-whisper", specifier = ">=1.2.1" },
-    { name = "kokoro", specifier = ">=0.9.4" },
-    { name = "numpy", specifier = ">=2.4.3" },
-    { name = "openai", specifier = ">=2.26.0" },
-    { name = "pyaudio", specifier = ">=0.2.11" },
-    { name = "sounddevice", specifier = ">=0.5.5" },
-    { name = "soundfile", specifier = ">=0.13.1" },
 ]
 
 [[package]]
