@@ -83,7 +83,7 @@ while true; do
     -p "$PERGUNTA" \
     -n 200 \
     --no-display-prompt \
-    --no-perf 2>/dev/null | sed 's/> //g' | sed '/^$/d' | head -1)
+    --no-perf 2>/dev/null | sed 's/> //g' | sed '/^$/d' | sed 's/EOF by user.*$//' | tr '\n' ' ')
 
   echo "$ICON_BOT  $RESPOSTA"
   echo "$RESPOSTA" >&3
